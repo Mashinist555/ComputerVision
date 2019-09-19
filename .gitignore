@@ -1,6 +1,7 @@
 .idea
 tests
-gorskiy
+gorskiy/public_tests
+gorskiy/run.py
 bayer_plus
 ryn.py
 script.sh
