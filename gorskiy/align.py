@@ -3,6 +3,7 @@ import numpy as np
 
 factor = 0.08
 
+
 def cut(image):
     hei = image.shape[0]
     wid = image.shape[1]
@@ -27,35 +28,55 @@ def imax(max, off):
         return max + off
 
 
+def smart_align(base, img, scaling):
+    hei = base.shape[0]
+    wid = base.shape[1]
+    mindx = -10
+    maxdx = 10
+    mindy = -10
+    maxdy = 10
+    if hei >= 200:
+        newhei = hei // 2
+        newwid = wid // 2
+        newbase = np.divide(np.add(np.add(base[0:newhei * 2:2, 0:newwid * 2:2], base[0:newhei * 2:2, 1:newwid * 2:2]),
+                                   np.add(base[1:newhei * 2:2, 0:newwid * 2:2], base[1:newhei * 2:2, 1:newwid * 2:2])),
+                            4)
+        newimg = np.divide(np.add(np.add(img[0:newhei * 2:2, 0:newwid * 2:2], img[0:newhei * 2:2, 1:newwid * 2:2]),
+                                  np.add(img[1:newhei * 2:2, 0:newwid * 2:2], img[1:newhei * 2:2, 1:newwid * 2:2])),
+                           4)
+        (bdx, bdy) = smart_align(newbase, newimg, scaling * 2)
+        mindx = bdx * 2 - 2
+        maxdx = bdx * 2 + 2
+        mindy = bdy * 2 - 2
+        maxdy = bdy * 2 + 2
+
+    coord = (-100, -100)
+    error = np.size(img) * 1234.0
+    for dx in range(mindx, maxdx):
+        for dy in range(mindy, maxdy):
+            curerr = mse(base[imin(dx):imax(hei, dx), imin(dy):imax(wid, dy)],
+                         img[imin(-dx):imax(hei, -dx), imin(-dy):imax(wid, -dy)])
+            if curerr < error:
+                error = curerr
+                coord = (dx, dy)
+
+    return coord
+
+
 def align(image, gcoords):
     hei = int(image.shape[0] / 3)
     wid = image.shape[1]
-    offset = int(hei * (1+factor))
+    offset = int(hei * (1 + factor))
     r_img = cut(image[0:hei, :])
     g_img = cut(image[hei:hei * 2, :])
     b_img = cut(image[hei * 2:hei * 3, :])
     hei = r_img.shape[0]
     wid = r_img.shape[1]
 
-    rcoord = (-100, -100)
-    r_error = np.size(r_img) * 1234.0
-
-    bcoord = (-100, -100)
-    b_error = np.size(r_img) * 1234.0
-    for dx in range(-15, 15):
-        for dy in range(-15, 15):
-            rerr = mse(g_img[imin(dx):imax(hei, dx), imin(dy):imax(wid, dy)],
-                       r_img[imin(-dx):imax(hei, -dx), imin(-dy):imax(wid, -dy)])
-            berr = mse(g_img[imin(dx):imax(hei, dx), imin(dy):imax(wid, dy)],
-                       b_img[imin(-dx):imax(hei, -dx), imin(-dy):imax(wid, -dy)])
-            if rerr < r_error:
-                r_error = rerr
-                rcoord = (dx, dy)
-            if berr < b_error:
-                b_error = berr
-                bcoord = (dx, dy)
-    reshei = hei - max(abs(rcoord[0] - bcoord[0]), max(rcoord[0], bcoord[0]))
-    reswid = wid - max(abs(rcoord[1] - bcoord[1]), max(rcoord[1], bcoord[1]))
+    rcoord = smart_align(g_img, r_img, 1)
+    bcoord = smart_align(g_img, b_img, 1)
+    reshei = hei - max(abs(rcoord[0] - bcoord[0]), max(abs(rcoord[0]), abs(bcoord[0])))
+    reswid = wid - max(abs(rcoord[1] - bcoord[1]), max(abs(rcoord[1]), abs(bcoord[1])))
 
     maxx = max(0, rcoord[0], bcoord[0])
     maxy = max(0, rcoord[1], bcoord[1])
@@ -68,7 +89,7 @@ def align(image, gcoords):
         r_img[imin(maxx - rcoord[0]):imin(maxx - rcoord[0]) + reshei,
         imin(maxy - rcoord[1]):imin(maxy - rcoord[1]) + reswid],
     ))
-    rcoord = (-rcoord[0] + gcoords[0] + int(image.shape[0] * (0+factor) / 3) - offset, -rcoord[1] + gcoords[1])
-    bcoord = (-bcoord[0] + gcoords[0] + int(image.shape[0] * (2+factor) / 3) - offset, -bcoord[1] + gcoords[1])
+    rcoord = (-rcoord[0] + gcoords[0] + int(image.shape[0] * (0 + factor) / 3) - offset, -rcoord[1] + gcoords[1])
+    bcoord = (-bcoord[0] + gcoords[0] + int(image.shape[0] * (2 + factor) / 3) - offset, -bcoord[1] + gcoords[1])
     # imsave("test_bilinear.png", result, )
     return result, rcoord, bcoord
