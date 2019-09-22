@@ -6,3 +6,6 @@ bayer_plus
 ryn.py
 script.sh
 /**/*.zip
+context_scaling/public_tests
+context_scaling/run.py
+/**/*.png
