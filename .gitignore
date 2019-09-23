@@ -9,3 +9,4 @@ script.sh
 context_scaling/public_tests
 context_scaling/run.py
 /**/*.png
+/venv
