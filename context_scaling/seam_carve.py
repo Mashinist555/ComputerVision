@@ -6,10 +6,10 @@ from skimage.io import imread, imsave
 
 def get_brightness(img):
     return np.add(
-        np.multiply(img[:, :, 0], 0.299),
+        np.multiply(img[:, :, 2], 0.114),
         np.add(
             np.multiply(img[:, :, 1], 0.587),
-            np.multiply(img[:, :, 2], 0.114)
+            np.multiply(img[:, :, 0], 0.299)
         )
     )
 
