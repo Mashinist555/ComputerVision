@@ -11,7 +11,7 @@ import random
 DEFAULT_TRANSFORM = ProjectiveTransform
 
 
-def find_orb(img, n_keypoints=300):  # TODO
+def find_orb(img, n_keypoints=1000):
     """Find keypoints and their descriptors in image.
 
     img ((W, H, 3)  np.ndarray) : 3-channel image
@@ -88,8 +88,8 @@ def find_homography(src_keypoints, dest_keypoints):
     return result
 
 
-def ransac_transform(src_keypoints, src_descriptors, dest_keypoints, dest_descriptors, max_trials=500,
-                     residual_threshold=1,  # TODO
+def ransac_transform(src_keypoints, src_descriptors, dest_keypoints, dest_descriptors, max_trials=1000,
+                     residual_threshold=1,
                      return_matches=False):
     """Match keypoints of 2 images and find ProjectiveTransform using RANSAC algorithm.
 
@@ -130,6 +130,7 @@ def ransac_transform(src_keypoints, src_descriptors, dest_keypoints, dest_descri
         np.power(projected[:, 0] - dest_keypoints[matches[:, 1], 0], 2) +
         np.power(projected[:, 1] - dest_keypoints[matches[:, 1], 1], 2))
     inliers = matches[dist < residual_threshold]
+    transform = ProjectiveTransform(find_homography(src_keypoints[inliers[:, 0]], dest_keypoints[inliers[:, 1]]))
     return transform, inliers
 
 
@@ -146,8 +147,15 @@ def find_simple_center_warps(forward_transforms):
 
     result = [None] * image_count
     result[center_index] = DEFAULT_TRANSFORM()
+    cur_h = DEFAULT_TRANSFORM().params
+    for i in range(center_index - 1, -1, -1):
+        cur_h = np.matmul(inv(forward_transforms[i][0].params), cur_h)
+        result[i] = ProjectiveTransform(cur_h)
 
-    # your code here
+    cur_h = DEFAULT_TRANSFORM().params
+    for i in range(center_index, image_count - 1):
+        cur_h = np.matmul(cur_h, forward_transforms[i][0].params)
+        result[i+1] = ProjectiveTransform(cur_h)
 
     return tuple(result)
 
