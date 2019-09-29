@@ -6,11 +6,12 @@ from skimage.transform import warp
 from skimage.filters import gaussian
 from numpy.linalg import inv, svd
 from math import sqrt
+import random
 
 DEFAULT_TRANSFORM = ProjectiveTransform
 
 
-def find_orb(img, n_keypoints=300):
+def find_orb(img, n_keypoints=300):  # TODO
     """Find keypoints and their descriptors in image.
 
     img ((W, H, 3)  np.ndarray) : 3-channel image
@@ -87,7 +88,8 @@ def find_homography(src_keypoints, dest_keypoints):
     return result
 
 
-def ransac_transform(src_keypoints, src_descriptors, dest_keypoints, dest_descriptors, max_trials=123, residual_threshold=1,
+def ransac_transform(src_keypoints, src_descriptors, dest_keypoints, dest_descriptors, max_trials=500,
+                     residual_threshold=1,  # TODO
                      return_matches=False):
     """Match keypoints of 2 images and find ProjectiveTransform using RANSAC algorithm.
 
@@ -106,7 +108,29 @@ def ransac_transform(src_keypoints, src_descriptors, dest_keypoints, dest_descri
 
     # your code here
     matches = match_descriptors(src_descriptors, dest_descriptors)
-    pass
+    n = matches.shape[0]
+    res_inds = [-1, -1, -1, -1]
+    res_kol = 0
+    for trial in range(0, max_trials):
+        inds = random.sample(range(n), 4)
+        h = find_homography(src_keypoints[matches[inds, 0]], dest_keypoints[matches[inds, 1]])
+        projected = ProjectiveTransform(h)(src_keypoints[matches[:, 0]])
+        dist = np.sqrt(
+            np.power(projected[:, 0] - dest_keypoints[matches[:, 1], 0], 2) +
+            np.power(projected[:, 1] - dest_keypoints[matches[:, 1], 1], 2))
+        kol = np.sum(dist < residual_threshold)
+        if kol > res_kol:
+            res_kol = kol
+            res_inds = inds
+
+    h = find_homography(src_keypoints[matches[res_inds, 0]], dest_keypoints[matches[res_inds, 1]])
+    transform = ProjectiveTransform(h)
+    projected = transform(src_keypoints[matches[:, 0]])
+    dist = np.sqrt(
+        np.power(projected[:, 0] - dest_keypoints[matches[:, 1], 0], 2) +
+        np.power(projected[:, 1] - dest_keypoints[matches[:, 1], 1], 2))
+    inliers = matches[dist < residual_threshold]
+    return transform, inliers
 
 
 def find_simple_center_warps(forward_transforms):
