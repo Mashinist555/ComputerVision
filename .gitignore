@@ -10,3 +10,6 @@ context_scaling/public_tests
 context_scaling/run.py
 /**/*.png
 /venv
+panorama
+sign_classification/public_tests
+sign_classification/run.py

@@ -83,6 +83,8 @@ def expand(img, mask):
         if mask is not None:
             res_mask[i] = np.concatenate(
                 (mask[i, :inds[i] + 1], np.array([np.average(mask[i, inds[i]:inds[i] + 2])]), mask[i, inds[i] + 1:]))
+            res_mask[i, inds[i]] = res_mask[i, inds[i]] + 1
+            res_mask[i, inds[i] + 1] = res_mask[i, inds[i] + 1] + 1
     # imsave("test_result.png", result, )
     if mask is not None:
         return result, res_mask, weak_mask
