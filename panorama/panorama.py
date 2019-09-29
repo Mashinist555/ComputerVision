@@ -1,7 +1,7 @@
 import numpy as np
 from skimage.feature import ORB, match_descriptors
 from skimage.color import rgb2gray
-from skimage.transform import ProjectiveTransform
+from skimage.transform import ProjectiveTransform, SimilarityTransform
 from skimage.transform import warp
 from skimage.filters import gaussian
 from numpy.linalg import inv, svd
@@ -155,7 +155,7 @@ def find_simple_center_warps(forward_transforms):
     cur_h = DEFAULT_TRANSFORM().params
     for i in range(center_index, image_count - 1):
         cur_h = np.matmul(cur_h, forward_transforms[i][0].params)
-        result[i+1] = ProjectiveTransform(cur_h)
+        result[i + 1] = ProjectiveTransform(cur_h)
 
     return tuple(result)
 
@@ -188,7 +188,15 @@ def get_final_center_warps(image_collection, simple_center_warps):
             Tuple[N] : final transformations
         """
     # your code here
-    pass
+    corners = tuple(get_corners(image_collection, simple_center_warps))
+    bound = get_min_max_coords(corners)
+    min_y = bound[0][0]
+    min_x = bound[0][1]
+    for warp in simple_center_warps:
+        shift = SimilarityTransform(translation=(-min_x, -min_y))
+        warp.params = np.matmul(shift.params, warp.params)
+    shape = np.array([bound[1][1] - bound[0][1], bound[1][0] - bound[0][0]])
+    return simple_center_warps, shape
 
 
 def rotate_transform_matrix(transform):
