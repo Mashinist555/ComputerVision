@@ -149,12 +149,12 @@ def find_simple_center_warps(forward_transforms):
     result[center_index] = DEFAULT_TRANSFORM()
     cur_h = DEFAULT_TRANSFORM().params
     for i in range(center_index - 1, -1, -1):
-        cur_h = np.matmul(inv(forward_transforms[i][0].params), cur_h)
+        cur_h = np.matmul(forward_transforms[i][0].params, cur_h)
         result[i] = ProjectiveTransform(cur_h)
 
     cur_h = DEFAULT_TRANSFORM().params
     for i in range(center_index, image_count - 1):
-        cur_h = np.matmul(cur_h, forward_transforms[i][0].params)
+        cur_h = np.matmul(cur_h, inv(forward_transforms[i][0].params))
         result[i + 1] = ProjectiveTransform(cur_h)
 
     return tuple(result)
@@ -195,7 +195,7 @@ def get_final_center_warps(image_collection, simple_center_warps):
     for warp in simple_center_warps:
         shift = SimilarityTransform(translation=(-min_x, -min_y))
         warp.params = np.matmul(shift.params, warp.params)
-    shape = np.array([bound[1][1] - bound[0][1], bound[1][0] - bound[0][0]])
+    shape = np.array([bound[1][1] - bound[0][1], bound[1][0] - bound[0][0]], dtype=int)
     return simple_center_warps, shape
 
 
@@ -217,7 +217,9 @@ def warp_image(image, transform, output_shape):
         (W, H)  np.ndarray : warped mask
     """
     # your code here
-    pass
+    warped_image = warp(image, rotate_transform_matrix(transform).inverse, output_shape=output_shape)
+    mask = warp(np.ones(image.shape, dtype=np.bool8), rotate_transform_matrix(transform).inverse, output_shape=output_shape)
+    return warped_image, np.asarray(mask, dtype=np.bool8)
 
 
 def merge_pano(image_collection, final_center_warps, output_shape):
@@ -230,11 +232,14 @@ def merge_pano(image_collection, final_center_warps, output_shape):
     Returns:
         (output_shape) np.ndarray: final pano
     """
-    result = np.zeros(output_shape + (3,))
+    result = np.zeros(np.append(output_shape, 3))
     result_mask = np.zeros(output_shape, dtype=np.bool8)
 
     # your code here
-
+    n = len(image_collection)
+    for i in reversed(range(0, n)):
+        warped_image, mask = warp_image(image_collection[i], final_center_warps[i], output_shape)
+        result[mask] = warped_image[mask]
     return result
 
 
