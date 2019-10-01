@@ -82,7 +82,7 @@ def find_homography(src_keypoints, dest_keypoints):
 
     u, s, vt = svd(A)
     row = vt[8]
-    row = row / np.mean(np.sqrt(row * row))
+    row = row / np.sum(np.sqrt(row * row))
     H = np.reshape(row, (3, 3))
     result = np.matmul(np.matmul(inv(dest_matrix), H), src_matrix)
     return result
@@ -151,9 +151,9 @@ def find_simple_center_warps(forward_transforms):
     result = [None] * image_count
     result[center_index] = DEFAULT_TRANSFORM()
     cur_h = DEFAULT_TRANSFORM().params
-    for i in range(center_index - 1, -1, -1):
-        cur_h = np.matmul(forward_transforms[i].params, cur_h)
-        result[i] = ProjectiveTransform(cur_h)
+    for i in reversed(range(center_index)):
+        cur_h = np.matmul(inv(forward_transforms[i].params), cur_h) # by some reason calcualtion via inversions is more accurate
+        result[i] = ProjectiveTransform(inv(cur_h))
 
     cur_h = DEFAULT_TRANSFORM().params
     for i in range(center_index, image_count - 1):
