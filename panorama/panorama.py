@@ -9,9 +9,10 @@ from math import sqrt
 import random
 
 DEFAULT_TRANSFORM = ProjectiveTransform
+N_KEYPOINTS=2000
+N_TRIALS=10000
 
-
-def find_orb(img, n_keypoints=2000):
+def find_orb(img, n_keypoints=N_KEYPOINTS):
     """Find keypoints and their descriptors in image.
 
     img ((W, H, 3)  np.ndarray) : 3-channel image
@@ -89,7 +90,7 @@ def find_homography(src_keypoints, dest_keypoints):
 
 
 def ransac_transform(src_keypoints, src_descriptors, dest_keypoints, dest_descriptors,
-                     max_trials=400, residual_threshold=1, return_matches=False):
+                     max_trials=N_TRIALS, residual_threshold=1, return_matches=False):
     """Match keypoints of 2 images and find ProjectiveTransform using RANSAC algorithm.
 
     src_keypoints ((N, 2) np.ndarray) : source coordinates
@@ -122,6 +123,8 @@ def ransac_transform(src_keypoints, src_descriptors, dest_keypoints, dest_descri
             print("trial: {}, kol: {}".format(trial, kol))
             res_kol = kol
             res_inds = inds
+            if res_kol > len(src_keypoints) / 10 and trial > max_trials / 10:
+                break
     h = find_homography(src_keypoints[matches[res_inds, 0]], dest_keypoints[matches[res_inds, 1]])
     transform = ProjectiveTransform(h)
     projected = transform(src_keypoints[matches[:, 0]])
