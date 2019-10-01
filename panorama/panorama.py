@@ -11,7 +11,7 @@ import random
 DEFAULT_TRANSFORM = ProjectiveTransform
 
 
-def find_orb(img, n_keypoints=1000):
+def find_orb(img, n_keypoints=2000):
     """Find keypoints and their descriptors in image.
 
     img ((W, H, 3)  np.ndarray) : 3-channel image
@@ -89,7 +89,7 @@ def find_homography(src_keypoints, dest_keypoints):
 
 
 def ransac_transform(src_keypoints, src_descriptors, dest_keypoints, dest_descriptors,
-                     max_trials=200, residual_threshold=1, return_matches=False):
+                     max_trials=400, residual_threshold=1, return_matches=False):
     """Match keypoints of 2 images and find ProjectiveTransform using RANSAC algorithm.
 
     src_keypoints ((N, 2) np.ndarray) : source coordinates
