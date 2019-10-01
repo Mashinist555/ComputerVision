@@ -89,7 +89,7 @@ def find_homography(src_keypoints, dest_keypoints):
 
 
 def ransac_transform(src_keypoints, src_descriptors, dest_keypoints, dest_descriptors,
-                     max_trials=1000, residual_threshold=1, return_matches=False):
+                     max_trials=200, residual_threshold=1, return_matches=False):
     """Match keypoints of 2 images and find ProjectiveTransform using RANSAC algorithm.
 
     src_keypoints ((N, 2) np.ndarray) : source coordinates
@@ -119,9 +119,9 @@ def ransac_transform(src_keypoints, src_descriptors, dest_keypoints, dest_descri
             np.power(projected[:, 1] - dest_keypoints[matches[:, 1], 1], 2))
         kol = np.sum(dist < residual_threshold)
         if kol > res_kol:
+            print("trial: {}, kol: {}".format(trial, kol))
             res_kol = kol
             res_inds = inds
-
     h = find_homography(src_keypoints[matches[res_inds, 0]], dest_keypoints[matches[res_inds, 1]])
     transform = ProjectiveTransform(h)
     projected = transform(src_keypoints[matches[:, 0]])
@@ -129,6 +129,7 @@ def ransac_transform(src_keypoints, src_descriptors, dest_keypoints, dest_descri
         np.power(projected[:, 0] - dest_keypoints[matches[:, 1], 0], 2) +
         np.power(projected[:, 1] - dest_keypoints[matches[:, 1], 1], 2))
     inliers = matches[dist < residual_threshold]
+    print("{} inliers matched".format(inliers.shape[0]))
     transform = ProjectiveTransform(find_homography(src_keypoints[inliers[:, 0]], dest_keypoints[inliers[:, 1]]))
     if return_matches:
         return transform, inliers
@@ -267,7 +268,7 @@ def get_gaussian_pyramid(image, n_layers, sigma=1):
     return result
 
 
-def get_laplacian_pyramid(image, n_layers=5, sigma=1):
+def get_laplacian_pyramid(image, n_layers=8, sigma=1):
     """Get Laplacian pyramid
 
     image ((W, H, 3)  np.ndarray) : original image
@@ -324,7 +325,7 @@ def blend_images(img1, img2, mask, n_layers, image_sigma, merge_sigma):
     return result
 
 
-def gaussian_merge_pano(image_collection, final_center_warps, output_shape, n_layers=5, image_sigma=1, merge_sigma=1):
+def gaussian_merge_pano(image_collection, final_center_warps, output_shape, n_layers=8, image_sigma=1, merge_sigma=1):
     """ Merge the whole panorama using Laplacian pyramid
 
     image_collection (Tuple[N]) : list of all images
@@ -350,4 +351,6 @@ def gaussian_merge_pano(image_collection, final_center_warps, output_shape, n_la
         mask = np.zeros(output_shape)
         mask[:,(max_left + min_right)//2:] = 1.0
         result = blend_images(result, warps_with_masks[i][0], mask, n_layers, image_sigma, merge_sigma)
+        print("Image {} attached".format(i))
+    result = np.clip(result, 0, 1)
     return result
