@@ -9,8 +9,9 @@ from math import sqrt
 import random
 
 DEFAULT_TRANSFORM = ProjectiveTransform
-N_KEYPOINTS=2000
-N_TRIALS=10000
+N_KEYPOINTS = 2000
+N_TRIALS = 10000
+
 
 def find_orb(img, n_keypoints=N_KEYPOINTS):
     """Find keypoints and their descriptors in image.
@@ -155,7 +156,7 @@ def find_simple_center_warps(forward_transforms):
     result[center_index] = DEFAULT_TRANSFORM()
     cur_h = DEFAULT_TRANSFORM().params
     for i in reversed(range(center_index)):
-        cur_h = np.matmul(inv(forward_transforms[i].params), cur_h) # by some reason calcualtion via inversions is more accurate
+        cur_h = np.matmul(inv(forward_transforms[i].params), cur_h)  # by some reason calcualtion via inversions is more accurate
         result[i] = ProjectiveTransform(inv(cur_h))
 
     cur_h = DEFAULT_TRANSFORM().params
@@ -322,8 +323,8 @@ def blend_images(img1, img2, mask, n_layers, image_sigma, merge_sigma):
     result = np.zeros(img1.shape)
     for i in range(n_layers):
         for channel in range(3):
-            result[:,:,channel] += img1_pyr[i][:,:,channel] * np.subtract(1, mask_pyr[i])
-            result[:,:,channel] += img2_pyr[i][:,:,channel] * mask_pyr[i]
+            result[:, :, channel] += img1_pyr[i][:, :, channel] * np.subtract(1, mask_pyr[i])
+            result[:, :, channel] += img2_pyr[i][:, :, channel] * mask_pyr[i]
 
     return result
 
@@ -349,10 +350,10 @@ def gaussian_merge_pano(image_collection, final_center_warps, output_shape, n_la
     result += warps_with_masks[0][0]
     n = len(image_collection)
     for i in range(1, n):
-        max_left = int((corners[i-1][2, 0] + corners[i-1][3, 0])/2)
-        min_right = int((corners[i][0, 0] + corners[i][1, 0])/2)
+        max_left = int((corners[i - 1][2, 0] + corners[i - 1][3, 0]) / 2)
+        min_right = int((corners[i][0, 0] + corners[i][1, 0]) / 2)
         mask = np.zeros(output_shape)
-        mask[:,(max_left + min_right)//2:] = 1.0
+        mask[:, (max_left + min_right) // 2:] = 1.0
         result = blend_images(result, warps_with_masks[i][0], mask, n_layers, image_sigma, merge_sigma)
         print("Image {} attached".format(i))
     result = np.clip(result, 0, 1)
