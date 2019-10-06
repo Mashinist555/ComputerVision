@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from skimage.color import rgb2gray
-from scipy.signal import convolve2d, convolve
+from scipy.signal import convolve2d
 from sklearn.model_selection import train_test_split
 from sklearn import svm
 from skimage.transform import resize
@@ -21,15 +21,18 @@ def calc_gradient(img):
     for channel in range(img.shape[2]):
         ix[:, :, channel] = convolve2d(img[:, :, channel], np.array([[-1, 0, 1]]), mode='same', boundary='symm')
         iy[:, :, channel] = convolve2d(img[:, :, channel], np.array([[-1], [0], [1]]), mode='same', boundary='symm')
-    gradient_len = np.sqrt(ix * ix + iy * iy)
-    ch_ind = np.argmax(gradient_len, axis=2)
-    ind_x, ind_y = np.meshgrid(range(img.shape[0]), range(img.shape[1]))
-    # ind_x, ind_y = np.meshgrid(range(img.shape[0]), range(img.shape[1]), indexing='ij')
-    flat_ix = ix[ind_x, ind_y, ch_ind]
-    flat_iy = iy[ind_x, ind_y, ch_ind]
-    gradient_dir = np.arctan2(flat_iy, flat_ix)
+    ix_res = np.zeros((img.shape[0], img.shape[1]))
+    iy_res = np.zeros((img.shape[0], img.shape[1]))
+    ix_res += ix[:, :, 0] * 4
+    iy_res += iy[:, :, 0] * 4
+    ix_res += ix[:, :, 1] * 2
+    iy_res += iy[:, :, 1] * 2
+    ix_res += ix[:, :, 1] * 3
+    iy_res += iy[:, :, 1] * 3
+    gradient_len = np.sqrt(ix_res * ix_res + iy_res * iy_res)
+    gradient_dir = np.arctan2(iy_res, ix_res)
     gradient_dir[gradient_dir < 0] = gradient_dir[gradient_dir < 0] + math.pi  # TODO check
-    return gradient_len[ind_x, ind_y, ch_ind], gradient_dir
+    return gradient_len, gradient_dir
 
 
 def calc_cell_bins(image):
@@ -73,7 +76,7 @@ def calc_blocks(image):
 def extract_data():
     table = pd.read_csv('public_tests/00_test_img_input/train_gt.csv')
     object_ids = table[['class_id', 'phys_id']].drop_duplicates()
-    train_ids, test_ids = train_test_split(object_ids, test_size=0.3, random_state=3)  # TODO some objects may disappear
+    train_ids, test_ids = train_test_split(object_ids, test_size=0.2, random_state=14)  # TODO some objects may disappear
     train_id_set = set()
     for index, row in train_ids.iterrows():
         train_id_set.add((row.class_id, row.phys_id))
@@ -84,12 +87,12 @@ def extract_data():
 
 
 def fit_and_classify(train_features, train_labels, test_features):
-    model = svm.LinearSVC(verbose=1, C=0.1, max_iter=1000)
+    model = svm.LinearSVC(verbose=1, C=0.05, max_iter=1000)
     start = current_milli_time()
     len = train_features.shape[0]
     # model = svm.SVC(kernel='poly', C=0.1, verbose=1, degree=2, max_iter=1000)
     model.fit(train_features, train_labels)
-    print("Train time: {}".format(current_milli_time() - start))
+    # print("Train time: {}".format(current_milli_time() - start))
     return model.predict(test_features)
 
 
@@ -113,11 +116,11 @@ def extract_hog(image):
     global loaded
     global on_blocks
     loaded += 1
-    if loaded % 100 == 0:
-        print("{} images converted".format(loaded))
-        print("Total time: {}".format(current_milli_time() - total))
-        print("On blocks: {}".format(on_blocks))
-        print("On resize: {}".format(on_resize))
+    # if loaded % 100 == 0:
+    #     print("{} images converted".format(loaded))
+    #     print("Total time: {}".format(current_milli_time() - total))
+    #     print("On blocks: {}".format(on_blocks))
+    #     print("On resize: {}".format(on_resize))
 
     start = current_milli_time()
     result = calc_blocks(resized).flatten()

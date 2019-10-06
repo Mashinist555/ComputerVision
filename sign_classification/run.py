@@ -93,7 +93,7 @@ def run_single_test(data_dir, output_dir):
 
         return filenames, labels
 
-    HOG_FILENAME = 'train_hog_file_size80_block4.csv'
+    HOG_FILENAME = 'train_hog_file_size80_block4_423.csv'
 
     def dump_features(path, filenames):
         hog_length = len(extract_hog(imread(join(path, filenames[0]))))
@@ -135,7 +135,7 @@ def run_single_test(data_dir, output_dir):
     # train_features = extract_features(train_dir, train_filenames, 'train_hog_file.csv')
     # test_features = extract_features(test_dir, test_filenames, 'test_hog_file.csv')
 
-    dump_features(train_dir, train_filenames)
+    # dump_features(train_dir, train_filenames)
     train_data, test_data = extract_features(train_dir, train_filenames)
     train_features = np.stack(train_data['hog_vector'].apply(lambda x: np.asarray(x.split(','), dtype=float)))
     test_features = np.stack(test_data['hog_vector'].apply(lambda x: np.asarray(x.split(','), dtype=float)))
