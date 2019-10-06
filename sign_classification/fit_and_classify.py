@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from skimage.color import rgb2gray
-from scipy.signal import convolve2d
+from scipy.signal import convolve2d, convolve
 from sklearn.model_selection import train_test_split
 from sklearn import svm
 from skimage.transform import resize
@@ -9,30 +9,39 @@ import math
 import time
 
 EPS = 1e-8
-CELL_NUM = 8
+CELL_NUM = 10
 CELL_SIZE = 8
 
 current_milli_time = lambda: int(round(time.time() * 1000))
 
 
 def calc_gradient(img):
-    ix = convolve2d(img, np.array([[-1, 0, 1]]), mode='same', boundary='symm')
-    iy = convolve2d(img, np.array([[-1], [0], [1]]), mode='same', boundary='symm')
+    ix = np.zeros(img.shape)
+    iy = np.zeros(img.shape)
+    for channel in range(img.shape[2]):
+        ix[:, :, channel] = convolve2d(img[:, :, channel], np.array([[-1, 0, 1]]), mode='same', boundary='symm')
+        iy[:, :, channel] = convolve2d(img[:, :, channel], np.array([[-1], [0], [1]]), mode='same', boundary='symm')
     gradient_len = np.sqrt(ix * ix + iy * iy)
-    gradient_dir = np.arctan2(iy, ix)
+    ch_ind = np.argmax(gradient_len, axis=2)
+    ind_x, ind_y = np.meshgrid(range(img.shape[0]), range(img.shape[1]))
+    # ind_x, ind_y = np.meshgrid(range(img.shape[0]), range(img.shape[1]), indexing='ij')
+    flat_ix = ix[ind_x, ind_y, ch_ind]
+    flat_iy = iy[ind_x, ind_y, ch_ind]
+    gradient_dir = np.arctan2(flat_iy, flat_ix)
     gradient_dir[gradient_dir < 0] = gradient_dir[gradient_dir < 0] + math.pi  # TODO check
-    return gradient_len, gradient_dir
+    return gradient_len[ind_x, ind_y, ch_ind], gradient_dir
 
 
 def calc_cell_bins(image):
-    gray = rgb2gray(image)
-    gradien_len, gradien_dir = calc_gradient(gray)
+    gradien_len, gradien_dir = calc_gradient(image)
     hei = image.shape[0]
     wid = image.shape[1]
-    cell_hei = math.ceil(hei / CELL_NUM)
-    cell_wid = math.ceil(wid / CELL_NUM)
-    res_hei = math.ceil(hei / cell_hei)
-    res_wid = math.ceil(wid / cell_wid)
+    cell_hei = math.floor(hei / CELL_NUM)
+    cell_wid = math.floor(wid / CELL_NUM)
+    # res_hei = math.floor(hei / cell_hei)
+    # res_wid = math.floor(wid / cell_wid)
+    res_hei = CELL_NUM
+    res_wid = CELL_NUM
     cells = np.zeros((res_hei, res_wid, 8))
     for i in range(res_hei):
         for j in range(res_wid):
@@ -64,7 +73,7 @@ def calc_blocks(image):
 def extract_data():
     table = pd.read_csv('public_tests/00_test_img_input/train_gt.csv')
     object_ids = table[['class_id', 'phys_id']].drop_duplicates()
-    train_ids, test_ids = train_test_split(object_ids, test_size=0.2)  # TODO some objects may disappear
+    train_ids, test_ids = train_test_split(object_ids, test_size=0.3, random_state=3)  # TODO some objects may disappear
     train_id_set = set()
     for index, row in train_ids.iterrows():
         train_id_set.add((row.class_id, row.phys_id))
@@ -75,8 +84,12 @@ def extract_data():
 
 
 def fit_and_classify(train_features, train_labels, test_features):
-    model = svm.LinearSVC(max_iter=3000)
+    model = svm.LinearSVC(verbose=1, C=0.1, max_iter=1000)
+    start = current_milli_time()
+    len = train_features.shape[0]
+    # model = svm.SVC(kernel='poly', C=0.1, verbose=1, degree=2, max_iter=1000)
     model.fit(train_features, train_labels)
+    print("Train time: {}".format(current_milli_time() - start))
     return model.predict(test_features)
 
 

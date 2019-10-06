@@ -5,6 +5,8 @@ from sys import argv
 import csv
 import numpy as np
 import pandas as pd
+import seaborn as sn
+import matplotlib.pyplot as plt
 
 
 def check_test(data_dir):
@@ -91,28 +93,38 @@ def run_single_test(data_dir, output_dir):
 
         return filenames, labels
 
-    def extract_features(path, filenames, hog_filename):
+    HOG_FILENAME = 'train_hog_file_size80_block4.csv'
+
+    def dump_features(path, filenames):
         hog_length = len(extract_hog(imread(join(path, filenames[0]))))
         data = zeros((len(filenames), hog_length))
-        # with open(hog_filename, mode='w') as hog_file:
-        #     hog_writer = csv.writer(hog_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        #     hog_writer.writerow(['filename', 'hog_vector'])
-        hog_data = pd.read_csv('train_hog_file.csv')
+        with open(HOG_FILENAME, mode='w') as hog_file:
+            hog_writer = csv.writer(hog_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            hog_writer.writerow(['filename', 'hog_vector'])
+            for i in range(0, len(filenames)):
+                filename = join(path, filenames[i])
+                data[i, :] = extract_hog(imread(filename))
+                hog_writer.writerow([filename, ','.join(np.asarray(np.round(data[i], 3), dtype=str))])
+                if i % 100 == 0:
+                    print('{} done'.format(i))
+
+    def extract_features(path, filenames):
+        hog_length = len(extract_hog(imread(join(path, filenames[0]))))
+        data = zeros((len(filenames), hog_length))
+        hog_data = pd.read_csv(HOG_FILENAME)
         hog_data = hog_data.set_index('filename')
         for i in range(0, len(filenames)):
             filename = join(path, filenames[i])
             data[i, :] = np.asarray(hog_data.loc[filename].hog_vector.split(','), dtype=float)
             if i % 100 == 0:
                 print('{} done'.format(i))
-            # data[i, :] = extract_hog(imread(filename))
-                # hog_writer.writerow([filename, ','.join(np.asarray(np.round(data[i], 4), dtype=str))])
 
         train_data, test_data = extract_data()
 
         train_data['filenames'] = 'public_tests/00_test_img_input/train/' + train_data['filenames']
         test_data['filenames'] = 'public_tests/00_test_img_input/train/' + test_data['filenames']
-        train_data = train_data.merge(hog_data, how='inner', left_on='filenames', right_on = 'filename')
-        test_data = test_data.merge(hog_data, how='inner', left_on='filenames', right_on = 'filename')
+        train_data = train_data.merge(hog_data, how='inner', left_on='filenames', right_on='filename')
+        test_data = test_data.merge(hog_data, how='inner', left_on='filenames', right_on='filename')
         return train_data, test_data
 
     train_filenames, train_labels = read_gt(train_dir)
@@ -123,7 +135,8 @@ def run_single_test(data_dir, output_dir):
     # train_features = extract_features(train_dir, train_filenames, 'train_hog_file.csv')
     # test_features = extract_features(test_dir, test_filenames, 'test_hog_file.csv')
 
-    train_data, test_data = extract_features(train_dir, train_filenames, '')
+    dump_features(train_dir, train_filenames)
+    train_data, test_data = extract_features(train_dir, train_filenames)
     train_features = np.stack(train_data['hog_vector'].apply(lambda x: np.asarray(x.split(','), dtype=float)))
     test_features = np.stack(test_data['hog_vector'].apply(lambda x: np.asarray(x.split(','), dtype=float)))
     train_labels = np.array(train_data['class_id'])
@@ -131,16 +144,33 @@ def run_single_test(data_dir, output_dir):
 
     y = fit_and_classify(train_features, train_labels, test_features)
 
-    print("Lenght of test: {}", y)
+    print("Length of test: {}".format(len(y)))
     correct = 0
     incorrect = 0
+    conf_matrix = np.zeros((43, 43), dtype=int)
+    miss = np.zeros((43), dtype=int)
+    total = np.zeros((43), dtype=int)
     for i in range(len(y)):
+        conf_matrix[y[i], test_labels[i]] += 1
+        total[test_labels[i]]+=1
         if y[i] == test_labels[i]:
-            correct+=1
+            correct += 1
         else:
-            incorrect+=1
+            incorrect += 1
+            miss[test_labels[i]]+=1
+            print("Name: {}, expected: {}, actual: {}".format(test_data.filenames[i], test_labels[i], y[i]))
 
-    print("Correct: {}; Incorrect: {}; Accuracy: {}".format(correct, incorrect, correct/len(y)*100))
+    print(HOG_FILENAME)
+    print("Correct: {}; Incorrect: {}; Accuracy: {}".format(correct, incorrect, correct / len(y) * 100))
+    print("Per class stats:")
+    for i in range(43):
+        conf_matrix[i][i] //= 100
+        print("Total: {}, missed: {}, miss percentage: {}".format(total[i], miss[i], miss[i] / total[i]))
+
+    df_cm = pd.DataFrame(conf_matrix, index=[i for i in range(43)], columns=[i for i in range(43)])
+    plt.figure(figsize=(15, 11))
+    sn.heatmap(df_cm, annot=True)
+    plt.show()
 
     with open(join(output_dir, 'output.csv'), 'w') as fout:
         for i, filename in enumerate(test_filenames):
