@@ -69,7 +69,7 @@ def grade(data_path):
     return res
 
 
-def run_single_test(data_dir, output_dir, seed):
+def run_single_test(data_dir, output_dir, seed, first):
     from fit_and_classify import fit_and_classify, extract_hog, extract_data
     from glob import glob
     from numpy import zeros
@@ -93,7 +93,7 @@ def run_single_test(data_dir, output_dir, seed):
 
         return filenames, labels
 
-    HOG_FILENAME = 'train_hog_file_size88_block4_423fixed.csv'
+    HOG_FILENAME = 'train_hog_file_size80_block4_442fixed_10bins.csv'
 
     def dump_features(path, filenames):
         hog_length = len(extract_hog(imread(join(path, filenames[0]))))
@@ -135,7 +135,8 @@ def run_single_test(data_dir, output_dir, seed):
     # train_features = extract_features(train_dir, train_filenames, 'train_hog_file.csv')
     # test_features = extract_features(test_dir, test_filenames, 'test_hog_file.csv')
 
-    # dump_features(train_dir, train_filenames)
+    if seed == first:
+        dump_features(train_dir, train_filenames)
     train_data, test_data = extract_features(train_dir, train_filenames)
     train_features = np.stack(train_data['hog_vector'].apply(lambda x: np.asarray(x.split(','), dtype=float)))
     test_features = np.stack(test_data['hog_vector'].apply(lambda x: np.asarray(x.split(','), dtype=float)))
@@ -224,7 +225,7 @@ if __name__ == '__main__':
             try:
                 start = time()
                 for i in range(10):
-                    run_single_test(input_dir, run_output_dir, i + 100)
+                    run_single_test(input_dir, run_output_dir, i + 100, 100)
                 end = time()
                 running_time = end - start
             except:

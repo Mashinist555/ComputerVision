@@ -9,7 +9,7 @@ import math
 import time
 
 EPS = 1e-8
-CELL_NUM = 11
+CELL_NUM = 10
 CELL_SIZE = 8
 
 current_milli_time = lambda: int(round(time.time() * 1000))
@@ -25,10 +25,10 @@ def calc_gradient(img):
     iy_res = np.zeros((img.shape[0], img.shape[1]))
     ix_res += ix[:, :, 0] * 4
     iy_res += iy[:, :, 0] * 4
-    ix_res += ix[:, :, 1] * 2
-    iy_res += iy[:, :, 1] * 2
-    ix_res += ix[:, :, 2] * 3
-    iy_res += iy[:, :, 2] * 3
+    ix_res += ix[:, :, 1] * 4
+    iy_res += iy[:, :, 1] * 4
+    ix_res += ix[:, :, 2] * 2
+    iy_res += iy[:, :, 2] * 2
     gradient_len = np.sqrt(ix_res * ix_res + iy_res * iy_res)
     gradient_dir = np.arctan2(iy_res, ix_res)
     gradient_dir[gradient_dir < 0] = gradient_dir[gradient_dir < 0] + math.pi  # TODO check
@@ -45,12 +45,12 @@ def calc_cell_bins(image):
     # res_wid = math.floor(wid / cell_wid)
     res_hei = CELL_NUM
     res_wid = CELL_NUM
-    cells = np.zeros((res_hei, res_wid, 8))
+    cells = np.zeros((res_hei, res_wid, 10))
     for i in range(res_hei):
         for j in range(res_wid):
             lens = gradien_len[i * cell_hei:(i + 1) * cell_hei, j * cell_wid:(j + 1) * cell_wid]
             dirs = gradien_dir[i * cell_hei:(i + 1) * cell_hei, j * cell_wid:(j + 1) * cell_wid]
-            cells[i, j], _ = np.histogram(dirs, 8, range=(0, math.pi), weights=lens)
+            cells[i, j], _ = np.histogram(dirs, 10, range=(0, math.pi), weights=lens)
 
     return cells
 
@@ -87,7 +87,7 @@ def extract_data(seed):
 
 
 def fit_and_classify(train_features, train_labels, test_features):
-    model = svm.LinearSVC(verbose=0, C=0.05, max_iter=1000)
+    model = svm.LinearSVC(verbose=0, C=0.03, max_iter=2000)
     start = current_milli_time()
     len = train_features.shape[0]
     # model = svm.SVC(kernel='poly', C=0.1, verbose=1, degree=2, max_iter=1000)
