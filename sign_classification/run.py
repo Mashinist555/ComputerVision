@@ -69,7 +69,7 @@ def grade(data_path):
     return res
 
 
-def run_single_test(data_dir, output_dir):
+def run_single_test(data_dir, output_dir, seed):
     from fit_and_classify import fit_and_classify, extract_hog, extract_data
     from glob import glob
     from numpy import zeros
@@ -93,7 +93,7 @@ def run_single_test(data_dir, output_dir):
 
         return filenames, labels
 
-    HOG_FILENAME = 'train_hog_file_size80_block4_423.csv'
+    HOG_FILENAME = 'train_hog_file_size88_block4_423fixed.csv'
 
     def dump_features(path, filenames):
         hog_length = len(extract_hog(imread(join(path, filenames[0]))))
@@ -116,10 +116,10 @@ def run_single_test(data_dir, output_dir):
         for i in range(0, len(filenames)):
             filename = join(path, filenames[i])
             data[i, :] = np.asarray(hog_data.loc[filename].hog_vector.split(','), dtype=float)
-            if i % 100 == 0:
+            if i % 5000 == 0:
                 print('{} done'.format(i))
 
-        train_data, test_data = extract_data()
+        train_data, test_data = extract_data(seed)
 
         train_data['filenames'] = 'public_tests/00_test_img_input/train/' + train_data['filenames']
         test_data['filenames'] = 'public_tests/00_test_img_input/train/' + test_data['filenames']
@@ -158,10 +158,10 @@ def run_single_test(data_dir, output_dir):
         else:
             incorrect += 1
             miss[test_labels[i]]+=1
-            print("Name: {}, expected: {}, actual: {}".format(test_data.filenames[i], test_labels[i], y[i]))
+            # print("Name: {}, expected: {}, actual: {}".format(test_data.filenames[i], test_labels[i], y[i]))
 
     print(HOG_FILENAME)
-    print("Correct: {}; Incorrect: {}; Accuracy: {}".format(correct, incorrect, correct / len(y) * 100))
+    print("Correct: {}; Incorrect: {}; Accuracy: {}; Seed: {}".format(correct, incorrect, correct / len(y) * 100, seed))
     print("Per class stats:")
     for i in range(43):
         conf_matrix[i][i] //= 100
@@ -172,9 +172,9 @@ def run_single_test(data_dir, output_dir):
     sn.heatmap(df_cm, annot=True)
     plt.show()
 
-    with open(join(output_dir, 'output.csv'), 'w') as fout:
-        for i, filename in enumerate(test_filenames):
-            print('%s,%d' % (filename, y[i]), file=fout)
+    # with open(join(output_dir, 'output.csv'), 'w') as fout:
+    #     for i, filename in enumerate(test_filenames):
+    #         print('%s,%d' % (filename, y[i]), file=fout)
 
 
 if __name__ == '__main__':
@@ -223,7 +223,8 @@ if __name__ == '__main__':
 
             try:
                 start = time()
-                run_single_test(input_dir, run_output_dir)
+                for i in range(10):
+                    run_single_test(input_dir, run_output_dir, i + 100)
                 end = time()
                 running_time = end - start
             except:

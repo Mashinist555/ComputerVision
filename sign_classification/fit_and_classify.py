@@ -9,7 +9,7 @@ import math
 import time
 
 EPS = 1e-8
-CELL_NUM = 10
+CELL_NUM = 11
 CELL_SIZE = 8
 
 current_milli_time = lambda: int(round(time.time() * 1000))
@@ -27,8 +27,8 @@ def calc_gradient(img):
     iy_res += iy[:, :, 0] * 4
     ix_res += ix[:, :, 1] * 2
     iy_res += iy[:, :, 1] * 2
-    ix_res += ix[:, :, 1] * 3
-    iy_res += iy[:, :, 1] * 3
+    ix_res += ix[:, :, 2] * 3
+    iy_res += iy[:, :, 2] * 3
     gradient_len = np.sqrt(ix_res * ix_res + iy_res * iy_res)
     gradient_dir = np.arctan2(iy_res, ix_res)
     gradient_dir[gradient_dir < 0] = gradient_dir[gradient_dir < 0] + math.pi  # TODO check
@@ -73,10 +73,10 @@ def calc_blocks(image):
     return blocks
 
 
-def extract_data():
+def extract_data(seed):
     table = pd.read_csv('public_tests/00_test_img_input/train_gt.csv')
     object_ids = table[['class_id', 'phys_id']].drop_duplicates()
-    train_ids, test_ids = train_test_split(object_ids, test_size=0.2, random_state=14)  # TODO some objects may disappear
+    train_ids, test_ids = train_test_split(object_ids, test_size=0.2, random_state=seed)  # TODO some objects may disappear
     train_id_set = set()
     for index, row in train_ids.iterrows():
         train_id_set.add((row.class_id, row.phys_id))
@@ -87,7 +87,7 @@ def extract_data():
 
 
 def fit_and_classify(train_features, train_labels, test_features):
-    model = svm.LinearSVC(verbose=1, C=0.05, max_iter=1000)
+    model = svm.LinearSVC(verbose=0, C=0.05, max_iter=1000)
     start = current_milli_time()
     len = train_features.shape[0]
     # model = svm.SVC(kernel='poly', C=0.1, verbose=1, degree=2, max_iter=1000)
