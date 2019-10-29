@@ -60,14 +60,8 @@ class Softmax(Layer):
         size = grad_outputs.shape[1]
         along_i = np.repeat(outputs[:, :, np.newaxis], size, axis=2)
         along_j = np.repeat(outputs[:, np.newaxis, :], size, axis=1)
-        din_out = along_i * np.repeat(np.eye(size)[np.newaxis, :, :], batch_size, axis=0) * along_j
-        # inputs = self.forward_inputs
-        # exps = np.exp(inputs - np.max(inputs))
-        # sums = np.expand_dims(np.sum(exps, axis=1), axis=1)
-        # sum_except = sums - exps
-        result = np.tensordot(din_out, grad_outputs, axes=[1, 2])
-
-        return outputs * sum_except / sums * grad_outputs
+        din_out = along_i * (np.repeat(np.eye(size)[np.newaxis, :, :], batch_size, axis=0) - along_j)
+        return np.einsum('ijk,ik->ij', din_out, grad_outputs)
         # your code here /\
 
 
