@@ -142,7 +142,7 @@ class CategoricalCrossentropy(Loss):
         """
         # your code here \/
         batch_size, output_units = y_gt.shape
-        return np.empty((batch_size,))
+        return -np.einsum('ij,ij->i', y_gt, np.log(y_pred))
         # your code here /\
 
     def gradient(self, y_gt, y_pred):
@@ -152,7 +152,7 @@ class CategoricalCrossentropy(Loss):
         :return: np.array((n, d)), gradient loss to y_pred
         """
         # your code here \/
-        return np.empty(y_pred.shape)
+        return -np.einsum('ij,ij->ij', y_gt, 1 / y_pred)
         # your code here /\
 
 
