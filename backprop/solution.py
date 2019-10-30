@@ -107,7 +107,7 @@ class Dense(Layer):
         # your code here \/
         batch_size, input_units = inputs.shape
         output_units, = self.output_shape
-        return np.empty((batch_size, output_units))
+        return np.einsum('ij,jk->ik', inputs, self.weights) + self.biases
         # your code here /\
 
     def backward(self, grad_outputs):
@@ -124,11 +124,11 @@ class Dense(Layer):
 
         # Don't forget to update current gradients:
         # dLoss/dWeights
-        self.weights_grad[...] = np.empty(self.weights.shape)
+        self.weights_grad[...] = np.einsum('ij,ik->jk', self.forward_inputs, grad_outputs) / batch_size
         # dLoss/dBiases
-        self.biases_grad[...] = np.empty(self.biases.shape)
+        self.biases_grad[...] = np.mean(grad_outputs, axis=0)
 
-        return np.empty((batch_size, input_units))
+        return np.einsum('ij,kj->ki', self.weights, grad_outputs)
         # your code here /\
 
 
