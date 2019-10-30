@@ -34,6 +34,8 @@ class ReLU(Layer):
 
 # ============================== 2.1.2 Softmax ===============================
 class Softmax(Layer):
+    EPS = 1e-15
+
     def forward(self, inputs):
         """
         :param inputs: np.array((n, d)), input values,
@@ -42,9 +44,13 @@ class Softmax(Layer):
                 n - batch size, d - number of units
         """
         # your code here \/
-        exps = np.exp(inputs - np.max(inputs))
+        if inputs.size == 0:
+            max = 0
+        else:
+            max = np.max(inputs)
+        exps = np.exp(inputs - max)
         sums = np.expand_dims(np.sum(exps, axis=1), axis=1)
-        return exps / sums
+        return exps / (sums + self.EPS)
         # your code here /\
 
     def backward(self, grad_outputs):
@@ -134,6 +140,9 @@ class Dense(Layer):
 
 # ============================ 2.2.1 Crossentropy ============================
 class CategoricalCrossentropy(Loss):
+
+    EPS = 1e-9
+
     def __call__(self, y_gt, y_pred):
         """
         :param y_gt: np.array((n, d)), ground truth (correct) labels
@@ -142,7 +151,7 @@ class CategoricalCrossentropy(Loss):
         """
         # your code here \/
         batch_size, output_units = y_gt.shape
-        return -np.einsum('ij,ij->i', y_gt, np.log(y_pred))
+        return -np.einsum('ij,ij->i', y_gt, np.log((y_pred + self.EPS)))
         # your code here /\
 
     def gradient(self, y_gt, y_pred):
@@ -152,7 +161,7 @@ class CategoricalCrossentropy(Loss):
         :return: np.array((n, d)), gradient loss to y_pred
         """
         # your code here \/
-        return -np.einsum('ij,ij->ij', y_gt, 1 / y_pred)
+        return -np.einsum('ij,ij->ij', y_gt, 1 / (y_pred + self.EPS))
         # your code here /\
 
 
@@ -176,7 +185,7 @@ class SGD(Optimizer):
             # your code here \/
             assert parameter_shape == parameter.shape
             assert parameter_shape == parameter_grad.shape
-            return np.empty(parameter_shape)
+            return parameter - self._lr * parameter_grad
             # your code here /\
 
         return updater
@@ -206,8 +215,8 @@ class SGDMomentum(Optimizer):
             assert parameter_shape == updater.inertia.shape
 
             # Don't forget to update the current inertia tensor:
-            updater.inertia[...] = np.empty(parameter_shape)
-            return np.empty(parameter_shape)
+            updater.inertia[...] = updater.inertia * self._momentum + self._lr * parameter_grad
+            return parameter - updater.inertia
             # your code here /\
 
         updater.inertia = np.zeros(parameter_shape)
@@ -218,12 +227,17 @@ class SGDMomentum(Optimizer):
 def train_mnist_model(x_train, y_train, x_valid, y_valid):
     # your code here \/
     # 1) Create a Model
-    model = ...
+    loss = CategoricalCrossentropy()
+    optimizer = SGDMomentum(lr=0.002, momentum=0.9)
+    model = Model(loss, optimizer)
     # 2) Add layers to the model
     #   (don't forget to specify the input shape for the first layer)
-    model.add(...)
+    model.add(Dense(units=16, input_shape=(784,)))
+    model.add(ReLU())
+    model.add(Dense(units=10))
+    model.add(Softmax())
     # 3) Train and validate the model using the provided data
-    model.fit(...)
+    model.fit(x_train, y_train, 16, 3, x_valid=x_valid, y_valid=y_valid)
     # your code here /\
     return model
 
